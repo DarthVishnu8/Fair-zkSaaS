@@ -33,3 +33,26 @@ impl<F: FftField> ConstraintDomain<F> {
         }
     }
 }
+
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+core::arch::global_asm!(
+    ".intel_syntax noprefix",
+    ".global __rust_probestack",
+    "__rust_probestack:",
+    "    push rcx",
+    "    mov rcx, rax",
+    "2:",
+    "    cmp rcx, 4096",
+    "    jl 3f",
+    "    sub rsp, 4096",
+    "    test [rsp], rsp",
+    "    sub rcx, 4096",
+    "    jmp 2b",
+    "3:",
+    "    sub rsp, rcx",
+    "    test [rsp], rsp",
+    "    add rsp, rax",
+    "    pop rcx",
+    "    ret",
+    ".att_syntax prefix"
+);

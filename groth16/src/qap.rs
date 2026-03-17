@@ -144,9 +144,9 @@ mod tests {
     use ark_poly::Radix2EvaluationDomain;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
-    #[test]
-    fn creates_qap() {
-        let cfg = CircomConfig::<Bn254>::new(
+    #[tokio::test]
+    async fn creates_qap() {
+        let cfg = CircomConfig::<Fr>::new(
             "../fixtures/sha256/sha256_js/sha256.wasm",
             "../fixtures/sha256/sha256.r1cs",
         )
@@ -167,9 +167,9 @@ mod tests {
         eprintln!("{:?}", qap);
     }
 
-    #[test]
-    fn setup() {
-        let cfg = CircomConfig::<Bn254>::new(
+    #[tokio::test]
+    async fn setup() {
+        let cfg = CircomConfig::<Fr>::new(
             "../fixtures/sha256/sha256_js/sha256.wasm",
             "../fixtures/sha256/sha256.r1cs",
         )

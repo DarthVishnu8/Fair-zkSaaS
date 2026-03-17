@@ -539,7 +539,7 @@ mod tests {
 
     #[tokio::test]
     async fn ext_witness_circom() {
-        let cfg = CircomConfig::<Bn254>::new(
+        let cfg = CircomConfig::<Bn254Fr>::new(
             "../fixtures/sha256/sha256_js/sha256.wasm",
             "../fixtures/sha256/sha256.r1cs",
         )

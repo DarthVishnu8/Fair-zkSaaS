@@ -1,7 +1,7 @@
 #![allow(clippy::needless_range_loop)]
 
-use ark_ec::{pairing::Pairing, AffineRepr};
-use ark_ff::{FftField, PrimeField};
+use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{cfg_chunks, cfg_into_iter};
 use secret_sharing::pss::PackedSharingParams;
@@ -46,28 +46,54 @@ where
     /// Each party will hold one share per PSS chunk.
     pub fn pack_from_arkworks_proving_key(
         pk: &ark_groth16::ProvingKey<E>,
-        pp: PackedSharingParams<
-            <<E as Pairing>::G1Affine as AffineRepr>::ScalarField,
-        >,
+        pp: PackedSharingParams<E::ScalarField>,
     ) -> Vec<Self> {
-        let pre_packed_s = cfg_into_iter!(pk.a_query.clone())
-            .skip(1)
-            .map(Into::into)
-            .collect::<Vec<_>>();
-        let pre_packed_u = cfg_into_iter!(pk.h_query.clone())
-            .map(Into::into)
-            .collect::<Vec<_>>();
-        let pre_packed_w = cfg_into_iter!(pk.l_query.clone())
-            .map(Into::into)
-            .collect::<Vec<_>>();
-        let pre_packed_h = cfg_into_iter!(pk.b_g1_query.clone())
-            .skip(1)
-            .map(Into::into)
-            .collect::<Vec<_>>();
-        let pre_packed_v = cfg_into_iter!(pk.b_g2_query.clone())
-            .skip(1)
-            .map(Into::into)
-            .collect::<Vec<_>>();
+        fn pad_to_multiple<T: Clone>(mut v: Vec<T>, l: usize, zero: T) -> Vec<T> {
+            let rem = v.len() % l;
+            if rem != 0 {
+                v.resize(v.len() + (l - rem), zero);
+            }
+            v
+        }
+
+        let pre_packed_s = pad_to_multiple(
+            cfg_into_iter!(pk.a_query.clone())
+                .skip(1)
+                .map(|p| E::G1::from(p))
+                .collect::<Vec<_>>(),
+            pp.l,
+            E::G1::zero(),
+        );
+        let pre_packed_u = pad_to_multiple(
+            cfg_into_iter!(pk.h_query.clone())
+                .map(|p| E::G1::from(p))
+                .collect::<Vec<_>>(),
+            pp.l,
+            E::G1::zero(),
+        );
+        let pre_packed_w = pad_to_multiple(
+            cfg_into_iter!(pk.l_query.clone())
+                .map(|p| E::G1::from(p))
+                .collect::<Vec<_>>(),
+            pp.l,
+            E::G1::zero(),
+        );
+        let pre_packed_h = pad_to_multiple(
+            cfg_into_iter!(pk.b_g1_query.clone())
+                .skip(1)
+                .map(|p| E::G1::from(p))
+                .collect::<Vec<_>>(),
+            pp.l,
+            E::G1::zero(),
+        );
+        let pre_packed_v = pad_to_multiple(
+            cfg_into_iter!(pk.b_g2_query.clone())
+                .skip(1)
+                .map(|p| E::G2::from(p))
+                .collect::<Vec<_>>(),
+            pp.l,
+            E::G2::zero(),
+        );
 
         let packed_s = cfg_chunks!(pre_packed_s, pp.l)
             .map(|chunk| pp.det_pack::<E::G1>(chunk.to_vec()))
@@ -88,19 +114,19 @@ where
         cfg_into_iter!(0..pp.n)
             .map(|i| {
                 let s_shares = cfg_into_iter!(0..packed_s.len())
-                    .map(|j| packed_s[j][i].into())
+                    .map(|j| packed_s[j][i].into_affine())
                     .collect::<Vec<_>>();
                 let u_shares = cfg_into_iter!(0..packed_u.len())
-                    .map(|j| packed_u[j][i].into())
+                    .map(|j| packed_u[j][i].into_affine())
                     .collect::<Vec<_>>();
                 let v_shares = cfg_into_iter!(0..packed_v.len())
-                    .map(|j| packed_v[j][i].into())
+                    .map(|j| packed_v[j][i].into_affine())
                     .collect::<Vec<_>>();
                 let w_shares = cfg_into_iter!(0..packed_w.len())
-                    .map(|j| packed_w[j][i].into())
+                    .map(|j| packed_w[j][i].into_affine())
                     .collect::<Vec<_>>();
                 let h_shares = cfg_into_iter!(0..packed_h.len())
-                    .map(|j| packed_h[j][i].into())
+                    .map(|j| packed_h[j][i].into_affine())
                     .collect::<Vec<_>>();
 
                 PackedProvingKeyShare::<E> {
@@ -180,21 +206,21 @@ where
 mod tests {
     use super::*;
 
-    use ark_bn254::Bn254;
+    use ark_bn254::{Bn254, Fr};
     use ark_circom::{CircomBuilder, CircomConfig, CircomReduction};
     use ark_crypto_primitives::snark::SNARK;
     use ark_groth16::Groth16;
 
     const L: usize = 2;
 
-    #[test]
-    fn packed_pk_from_arkworks_pk() {
+    #[tokio::test]
+    async fn packed_pk_from_arkworks_pk() {
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_module_path(false)
             .is_test(true)
             .try_init();
-        let cfg = CircomConfig::<Bn254>::new(
+        let cfg = CircomConfig::<Fr>::new(
             "../fixtures/sha256/sha256_js/sha256.wasm",
             "../fixtures/sha256/sha256.r1cs",
         )

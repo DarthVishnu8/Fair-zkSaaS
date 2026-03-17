@@ -159,7 +159,7 @@ fn pack_from_witness<E: Pairing>(
 async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
-    let cfg = CircomConfig::<Bn254>::new(
+    let cfg = CircomConfig::<Bn254Fr>::new(
         "./fixtures/sha256/sha256_js/sha256.wasm",
         "./fixtures/sha256/sha256.r1cs",
     )

@@ -205,13 +205,13 @@ impl MpcNetConnection<TcpStream> {
             .await?;
 
         if from_all.is_some() {
-            self.client_receive_or_king_send_serialized(
+            self.client_receive_or_king_send_serialized::<u32>(
                 Some(from_all.unwrap().shares),
                 genesis_round_channel,
             )
             .await?;
         } else {
-            self.client_receive_or_king_send_serialized(
+            self.client_receive_or_king_send_serialized::<u32>(
                 None,
                 genesis_round_channel,
             )
