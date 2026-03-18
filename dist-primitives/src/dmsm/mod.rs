@@ -105,7 +105,6 @@ pub async fn d_msm<G: CurveGroup, Net: MpcSerNet>(
 mod tests {
     use ark_ec::bls12::Bls12Config;
     use ark_ec::CurveGroup;
-    use ark_ec::Group;
     use ark_ec::VariableBaseMSM;
     use ark_std::UniformRand;
     use ark_std::Zero;
@@ -114,9 +113,7 @@ mod tests {
     use ark_bls12_377::G1Affine;
     use ark_bls12_377::G1Projective as G1P;
 
-    type F = <ark_ec::short_weierstrass::Projective<
-        <ark_bls12_377::Config as Bls12Config>::G1Config,
-    > as Group>::ScalarField;
+    type F = <ark_bls12_377::g1::Config as ark_ec::CurveConfig>::ScalarField;
 
     use crate::utils::pack::transpose;
 
